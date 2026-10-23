@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Kanban del catálogo de ventas (sale_product_configurator / sale) -->
+    <record id="product_view_kanban_catalog_kaplan" model="ir.ui.view">
+        <field name="name">product.template.kanban.catalog.kaplan</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="sale.product_view_kanban_catalog"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='list_price']" position="after">
+                <field name="taxes_id" invisible="1"/>
+                <field name="price_total_with_tax" />
+            </xpath>
+            <xpath expr="//span[@name='list_price']" position="after">
+                <span class="o_kanban_record_subtitle text-muted">
+                    Total: <field name="price_total_with_tax" widget="monetary"/>
+                </span>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

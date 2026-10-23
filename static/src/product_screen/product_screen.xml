@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-inherit="point_of_sale.ControlButtons" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('set-partner')]//div[hasclass('partner-name')]" position="after">
+            <div t-if="partner and partner.vat" class="partner-vat small text-muted" style="font-size: 11px;">
+                <t t-esc="partner.vat"/>
+            </div>
+        </xpath>
+    </t>
+
+</templates>
