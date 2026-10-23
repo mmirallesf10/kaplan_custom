@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-inherit="point_of_sale.PartnerList" t-inherit-mode="extension">
+        <xpath expr="//thead//th[hasclass('partner-line-email')]" position="before">
+            <th class="partner-line-vat py-2">VAT</th>
+        </xpath>
+    </t>
+
+    <t t-inherit="point_of_sale.PartnerLine" t-inherit-mode="extension">
+
+        <xpath expr="//tr[hasclass('partner-line')]//td[hasclass('partner-line-email')]" position="before">
+            <td class="partner-line-vat">
+                <t t-esc="props.partner.vat or ''"/>
+            </td>
+        </xpath>
+
+        <xpath expr="//div[hasclass('partner-info')]//div[hasclass('company-field')]" position="after">
+            <div t-if="props.partner.vat" class="partner-vat-field text-muted small">
+                <t t-esc="props.partner.vat"/>
+            </div>
+        </xpath>
+    </t>
+
+</templates>

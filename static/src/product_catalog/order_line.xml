@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+    <t t-inherit="product.ProductCatalogOrderLine" t-inherit-mode="extension">
+        <xpath expr="//span[hasclass('o_product_catalog_price')]" position="replace">
+            <span class="o_product_catalog_price d-block">
+                Unit price: <t t-out="price"/>
+            </span>
+            <span t-if="showPriceTotal" class="o_product_catalog_price_total d-block text-muted small">
+                Total: <t t-out="priceTotal"/>
+            </span>
+        </xpath>
+    </t>
+
+</templates>
