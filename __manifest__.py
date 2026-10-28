@@ -1,15 +1,17 @@
 {
     'name': 'Kaplan Custom',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Customizations',
     'summary': 'Personalizaciones específicas para el cliente Kaplan',
     'author': 'Css Consultores 1010 C.A.',
     'website': 'https://www.Consultores1010.com',
     'license': 'AGPL-3',
     'depends': [
-        'point_of_sale',
-        'sale_management',
+        'account',       
         'product',
+        'sale',           
+        'sale_management',
+        'point_of_sale',
     ],
     'data': [],
     'assets': {
