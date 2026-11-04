@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="kaplan_custom.NavbarZReport" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('status-buttons')]" position="before">
+            <div t-if="this.pos.session.z_report_emitido"
+                 class="badge bg-danger text-center px-2 py-1 mx-2 align-self-center"
+                 title="La sesión ya emitió su Reporte Z y está cerrada fiscalmente">
+                Reporte Z emitido · ventas bloqueadas
+            </div>
+        </xpath>
+    </t>
+
+</templates>

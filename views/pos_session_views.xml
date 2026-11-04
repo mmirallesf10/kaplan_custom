@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_pos_session_form_inherit_z_report" model="ir.ui.view">
+        <field name="name">pos.session.form.inherit.z.report</field>
+        <field name="model">pos.session</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Cierre fiscal: permite generar el Reporte Z desde la sesión cuando
+                 el bloqueo impide cerrarla sin él. -->
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="kaplan_generate_z_report" type="object"
+                        string="Generar Reporte Z"
+                        class="btn-warning"
+                        invisible="z_report_emitido"/>
+            </xpath>
+
+            <xpath expr="//group[field[@name='cash_register_balance_end_real']]" position="after">
+                <group string="Reporte Z (impresión fiscal)" name="z_report_group">
+                    <field name="z_report_emitido"/>
+                    <field name="z_report_count"/>
+                    <field name="z_report_ids" nolabel="1" colspan="2">
+                        <list create="0" edit="0" delete="0">
+                            <field name="name"/>
+                            <field name="date"/>
+                            <field name="state" widget="badge" decoration-success="state == 'issued'" decoration-warning="state == 'draft'"/>
+                            <field name="order_count"/>
+                            <field name="total_amount"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

@@ -13,7 +13,11 @@
         'sale_management',
         'point_of_sale',
     ],
-    'data': [],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/pos_session_z_report_views.xml',
+        'views/pos_session_views.xml',
+    ],
     'assets': {
         'web.assets_backend': [
             'kaplan_custom/static/src/product_catalog/**/*',
