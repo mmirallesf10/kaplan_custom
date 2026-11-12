@@ -18,6 +18,7 @@
     'data': [
         'security/ir.model.access.csv',
         'views/pos_session_views.xml',
+        'views/pos_order_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

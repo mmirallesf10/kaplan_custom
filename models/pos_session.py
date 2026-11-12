@@ -53,6 +53,7 @@ class PosSession(models.Model):
         """ Estado fiscal de la sesión para decidir la alerta de cierre. """
         self.ensure_one()
         orders = self._kaplan_get_emitted_orders()
+        error_orders = orders.filtered('kaplan_fiscal_error')
         return {
             'session_name': self.display_name,
             'tiene_reporte_z': self.z_report_emitido,
@@ -61,7 +62,49 @@ class PosSession(models.Model):
             'total_amount': sum(orders.mapped('amount_total')),
             # Con ventas emitidas y sin corte, el Reporte Z es obligatorio para cerrar.
             'requiere_reporte_z': bool(orders) and not self.z_report_emitido,
+            # Pedidos con Error Fiscal bloquean el cierre hasta resolverse.
+            'tiene_error_fiscal': bool(error_orders),
+            'error_fiscal_count': len(error_orders),
         }
+
+    def _kaplan_ensure_open_z_report(self, journal):
+        """ Devuelve el ``account.report.z`` vigente del diario.
+
+        Si el reporte del número actual está cerrado (el número del diario no
+        avanzó, por ejemplo porque ``action_close`` falló en silencio al no
+        tener impresora fiscal configurada), se incrementa el número y se
+        crea/recupera el siguiente reporte en borrador. Así cada sesión obtiene
+        un reporte Z distinto y las facturas nunca se adhieren a uno cerrado.
+        """
+        ReportZ = self.env['account.report.z'].sudo()
+        number = journal.x_account_z_report_number
+        while True:
+            z_report = ReportZ.search([
+                ('journal_id', '=', journal.id),
+                ('name', '=', number),
+                ('company_id', '=', journal.company_id.id),
+            ], limit=1)
+            if z_report and z_report.state != 'close':
+                return z_report
+
+            # Número vacío o reporte ya cerrado: avanzar al siguiente.
+            number = (
+                ReportZ._increment_char(number) if number else '0001'
+            )
+            journal.x_account_z_report_number = number
+            z_report = ReportZ.search([
+                ('journal_id', '=', journal.id),
+                ('name', '=', number),
+                ('company_id', '=', journal.company_id.id),
+            ], limit=1)
+            if not z_report:
+                return ReportZ.create({
+                    'name': number,
+                    'journal_id': journal.id,
+                    'x_fiscal_printer_id': journal.x_fiscal_printer_id.id,
+                    'company_id': journal.company_id.id,
+                    'state': 'draft',
+                })
 
     def kaplan_generate_z_report(self):
         """ Emite el Reporte Z de la sesión usando ``account.report.z``.
@@ -72,7 +115,6 @@ class PosSession(models.Model):
         ``action_close()``, lo que incrementa la secuencia del diario y deja
         las facturas siguientes adheridas al siguiente reporte.
         """
-        ReportZ = self.env['account.report.z'].sudo()
         for session in self:
             if session.z_report_emitido:
                 raise UserError(_(
@@ -86,19 +128,7 @@ class PosSession(models.Model):
                     'en su punto de venta.',
                     session.display_name,
                 ))
-            z_report = ReportZ.search([
-                ('journal_id', '=', journal.id),
-                ('name', '=', journal.x_account_z_report_number),
-                ('company_id', '=', session.company_id.id),
-            ], limit=1)
-            if not z_report:
-                z_report = ReportZ.create({
-                    'name': journal.x_account_z_report_number,
-                    'journal_id': journal.id,
-                    'x_fiscal_printer_id': journal.x_fiscal_printer_id.id,
-                    'company_id': session.company_id.id,
-                    'state': 'draft',
-                })
+            z_report = session._kaplan_ensure_open_z_report(journal)
             if z_report.state == 'draft':
                 z_report.action_open()
             # Adhiere las facturas de la sesión al reporte. Es necesario porque
@@ -114,6 +144,13 @@ class PosSession(models.Model):
                 session_moves.write({'report_z_id': z_report.id})
             if z_report.state == 'open':
                 z_report.action_close()
+            # action_close() no incrementa el número del diario si falta la
+            # impresora fiscal o el número (falla en silencio). En ese caso se
+            # avanza manualmente para que el próximo reporte sea distinto.
+            if journal.x_account_z_report_number == z_report.name:
+                journal.x_account_z_report_number = (
+                    self.env['account.report.z']._increment_char(z_report.name)
+                )
             session.z_report_id = z_report.id
             session.message_post(body=_(
                 'Reporte Z emitido: %s', z_report.display_name,
@@ -133,6 +170,15 @@ class PosSession(models.Model):
         """ No permite cerrar una sesión con ventas emitidas y sin Reporte Z. """
         for session in self:
             emitted_orders = session._kaplan_get_emitted_orders()
+            error_orders = emitted_orders.filtered('kaplan_fiscal_error')
+            if error_orders:
+                raise UserError(_(
+                    'La sesión «%s» tiene %s pedido(s) con Error Fiscal / Revisión '
+                    'Manual. Resuelva las incidencias fiscales antes de cerrar '
+                    'la sesión.',
+                    session.display_name,
+                    len(error_orders),
+                ))
             if emitted_orders and not session.z_report_emitido:
                 raise UserError(_(
                     'La sesión «%s» tiene %s venta(s) emitida(s) y no tiene Reporte Z. '

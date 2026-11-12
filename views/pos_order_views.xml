@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_pos_order_form_inherit_kaplan_fiscal" model="ir.ui.view">
+        <field name="name">pos.order.form.inherit.kaplan.fiscal</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="kaplan_resolve_fiscal_error" type="object"
+                        string="Resolver Error Fiscal"
+                        class="btn-warning"
+                        invisible="not kaplan_fiscal_error"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="Error Fiscal / Revisión Manual"
+                       invisible="not kaplan_fiscal_error">
+                    <field name="kaplan_fiscal_error" invisible="1"/>
+                    <field name="kaplan_fiscal_error_msg"/>
+                    <field name="kaplan_fiscal_error_date"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

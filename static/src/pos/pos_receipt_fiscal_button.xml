@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="kaplan_custom.ReceiptScreenFiscalButton"
+       t-inherit="point_of_sale.ReceiptScreen"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('receipt-options')]//button[@t-on-click='OnClickFacturaFiscal']" position="replace">
+            <button class="button print btn btn-lg btn-secondary w-100 py-3"
+                    t-on-click="OnClickFacturaFiscal"
+                    t-att-disabled="kaplanFiscalState.printing || kaplanFiscalState.printed">
+                <t t-if="kaplanFiscalState.printing">
+                    <i class="fa fa-spinner fa-spin ms-2"></i> Imprimiendo…
+                </t>
+                <t t-else="">
+                    <i class="fa fa-print ms-2"></i> Factura fiscal
+                </t>
+            </button>
+        </xpath>
+    </t>
+
+</templates>
