@@ -12,10 +12,11 @@
         'sale',           
         'sale_management',
         'point_of_sale',
+        'printax_pos_18',
+        'save_z_report',
     ],
     'data': [
         'security/ir.model.access.csv',
-        'views/pos_session_z_report_views.xml',
         'views/pos_session_views.xml',
     ],
     'assets': {

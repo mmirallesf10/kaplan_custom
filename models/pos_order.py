@@ -28,6 +28,7 @@ class PosOrder(models.Model):
                 ))
         return super().create(vals_list)
 
+    @api.model
     def sync_from_ui(self, orders):
         """ Marca la sincronización de la interfaz para eximirla del bloqueo. """
         return super(PosOrder, self.with_context(kaplan_pos_sync_from_ui=True)).sync_from_ui(orders)

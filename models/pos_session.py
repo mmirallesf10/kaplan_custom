@@ -5,14 +5,13 @@ from odoo.exceptions import UserError
 class PosSession(models.Model):
     _inherit = 'pos.session'
 
-    z_report_ids = fields.One2many(
-        'pos.session.z.report',
-        'session_id',
-        string='Reportes Z',
-    )
-    z_report_count = fields.Integer(
-        string='N.º de Reportes Z',
-        compute='_compute_z_report_count',
+    z_report_id = fields.Many2one(
+        'account.report.z',
+        string='Reporte Z',
+        readonly=True,
+        copy=False,
+        help='Reporte Z (account.report.z de save_z_report) emitido al cerrar '
+             'fiscalmente esta sesión de caja.',
     )
     z_report_emitido = fields.Boolean(
         string='Reporte Z emitido',
@@ -22,16 +21,11 @@ class PosSession(models.Model):
              'que queda cerrada fiscalmente y no admite nuevas ventas.',
     )
 
-    @api.depends('z_report_ids')
-    def _compute_z_report_count(self):
-        for session in self:
-            session.z_report_count = len(session.z_report_ids)
-
-    @api.depends('z_report_ids.state')
+    @api.depends('z_report_id', 'z_report_id.state')
     def _compute_z_report_emitido(self):
         for session in self:
-            session.z_report_emitido = any(
-                report.state == 'issued' for report in session.z_report_ids
+            session.z_report_emitido = bool(
+                session.z_report_id and session.z_report_id.state == 'close'
             )
 
     @api.model
@@ -70,34 +64,60 @@ class PosSession(models.Model):
         }
 
     def kaplan_generate_z_report(self):
-        """ Emite el Reporte Z de la sesión y captura el resumen fiscal. """
+        """ Emite el Reporte Z de la sesión usando ``account.report.z``.
+
+        El reporte Z de ``save_z_report`` es por diario de ventas: se toma el
+        ``account.report.z`` vigente del diario de facturación del POS
+        (``invoice_journal_id``), se abre si está en borrador y se cierra con
+        ``action_close()``, lo que incrementa la secuencia del diario y deja
+        las facturas siguientes adheridas al siguiente reporte.
+        """
+        ReportZ = self.env['account.report.z'].sudo()
         for session in self:
             if session.z_report_emitido:
                 raise UserError(_(
                     'La sesión «%s» ya tiene un Reporte Z emitido.',
                     session.display_name,
                 ))
-            orders = session._kaplan_get_emitted_orders()
-            z_report = self.env['pos.session.z.report'].create({
-                'session_id': session.id,
-                'name': _('Reporte Z %s', session.name or session.display_name),
-                'state': 'issued',
-                'date': session.stop_at or fields.Datetime.now(),
-                'order_count': len(orders),
-                'total_amount': sum(orders.mapped('amount_total')),
-            })
-            session._kaplan_emit_z_report_printax(z_report)
-            session.message_post(body=_('Reporte Z emitido: %s', z_report.name))
-        return True
-
-    def _kaplan_emit_z_report_printax(self, z_report):
-        """ Gancho de la impresora fiscal (Printax).
-
-        Aquí se enviará la orden de corte Z al equipo fiscal y se completarán
-        ``name``, ``counter_x``, ``counter_z`` y ``printer_serial`` con la
-        respuesta de Printax. Mientras la integración no esté implementada, el
-        Reporte Z se registra en Odoo con los datos de la sesión.
-        """
+            journal = session.config_id.invoice_journal_id or session.config_id.journal_id
+            if not journal:
+                raise UserError(_(
+                    'La sesión «%s» no tiene un diario de ventas configurado '
+                    'en su punto de venta.',
+                    session.display_name,
+                ))
+            z_report = ReportZ.search([
+                ('journal_id', '=', journal.id),
+                ('name', '=', journal.x_account_z_report_number),
+                ('company_id', '=', session.company_id.id),
+            ], limit=1)
+            if not z_report:
+                z_report = ReportZ.create({
+                    'name': journal.x_account_z_report_number,
+                    'journal_id': journal.id,
+                    'x_fiscal_printer_id': journal.x_fiscal_printer_id.id,
+                    'company_id': session.company_id.id,
+                    'state': 'draft',
+                })
+            if z_report.state == 'draft':
+                z_report.action_open()
+            # Adhiere las facturas de la sesión al reporte. Es necesario porque
+            # account.move.report_z_id es un compute almacenado que se resolvió
+            # al publicar la factura; si el reporte aún no existía, quedó vacío
+            # y no se recalcula solo. Solo se tocan las que no tienen reporte.
+            session_moves = session.order_ids.account_move.filtered(
+                lambda m: m.state == 'posted'
+                and m.move_type in ('out_invoice', 'out_refund')
+                and not m.report_z_id
+            )
+            if session_moves:
+                session_moves.write({'report_z_id': z_report.id})
+            if z_report.state == 'open':
+                z_report.action_close()
+            session.z_report_id = z_report.id
+            session.message_post(body=_(
+                'Reporte Z emitido: %s', z_report.display_name,
+            ))
         return True
 
     def kaplan_register_close_without_z_report(self):

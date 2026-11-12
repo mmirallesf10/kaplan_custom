@@ -17,19 +17,9 @@
             </xpath>
 
             <xpath expr="//group[field[@name='cash_register_balance_end_real']]" position="after">
-                <group string="Reporte Z (impresión fiscal)" name="z_report_group">
+                <group string="Reporte Z" name="z_report_group">
                     <field name="z_report_emitido"/>
-                    <field name="z_report_count"/>
-                    <field name="z_report_ids" nolabel="1" colspan="2">
-                        <list create="0" edit="0" delete="0">
-                            <field name="name"/>
-                            <field name="date"/>
-                            <field name="state" widget="badge" decoration-success="state == 'issued'" decoration-warning="state == 'draft'"/>
-                            <field name="order_count"/>
-                            <field name="total_amount"/>
-                            <field name="currency_id" column_invisible="1"/>
-                        </list>
-                    </field>
+                    <field name="z_report_id"/>
                 </group>
             </xpath>
 
